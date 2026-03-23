@@ -57,8 +57,7 @@ albums = get_artist_albums(token, artist["id"])
 
 print(f"Artist: {artist['name']}\n")
 
+counter = 0
 for album in albums['items']:
-	print(f"Albums: {album['name']}")
-
-
-print("Remove this line")
+	counter += 1
+	print(f"Album #{counter}: {album['name']}")
