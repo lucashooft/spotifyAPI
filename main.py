@@ -52,6 +52,25 @@ def get_activities(token, pagina=1, per_pagina=30):
     )
     return response.json()
 
+def get_activity_details(token, activiteit_id):
+    response = requests.get(
+        f"https://www.strava.com/api/v3/activities/{activiteit_id}",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"include_all_efforts": True}
+    )
+    return response.json()
+
+def get_segment_position(token, segment_id):
+    time.sleep(0.5) 
+    response = requests.get(
+        f"https://www.strava.com/api/v3/segments/{segment_id}/leaderboard",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"following": False}
+    )
+    data = response.json()
+    print(data)
+    return data.get("athlete_entry", None)
+
 if not os.path.exists(TOKENS_FILE):
     save_tokens(
         os.getenv("STRAVA_ACCESS_TOKEN"),
@@ -68,19 +87,30 @@ activities = get_activities(token)
 print("\nACTIVITIES")
 print("___________________________________________")
 
-for activity in activities:
-    print(f"\nName: {activity['name']}")
-    print(f"Type: {activity['type']}")
-    print(f"Distance: {round(activity['distance'] / 1000, 2)} km")
-    seconds = activity['elapsed_time']
-    hours = seconds //60 //60
-    seconds = activity['elapsed_time']
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
 
-    if hours > 0:
-        print(f"Duration: {hours}h {minutes}m")
-    else:
-        print(f"Duration: {minutes}m")
-    print(f"Date: {activity['start_date_local']}")
-    print("___________________________________________")
+for activity in activities:
+    if (activity['type'] == "Ride" and not activity['trainer']):    
+        details = get_activity_details(token, activity['id'])
+        
+        print(f"\nName: {details['name']}")
+        print(f"Distance: {round(details['distance'] / 1000, 2)} km")
+
+        seconds = details['elapsed_time']
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+
+        if hours > 0:
+            print(f"Duration: {hours}h {minutes}m")
+        else:
+            print(f"Duration: {minutes}m")
+
+        print(f"Date: {details['start_date_local']}")
+
+        segments = details.get('segment_efforts', [])
+        if segments:
+            print("Segmenten:")
+            for segment in segments:
+                print(f"  {segment['name']}")
+                print(f"  {get_segment_position(token, segment['segment']['id'])}")
+
+        print("-------------------------------------------")
