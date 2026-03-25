@@ -75,6 +75,22 @@ def get_activity_details(token, activity_id):
     )
     return response.json()
 
+def star_segment(token, segment_id):
+    response = requests.put(
+        f"https://www.strava.com/api/v3/segments/{segment_id}/starred",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"starred": True}
+    )
+    return response.json()
+
+def get_starred_segments(token):
+    response = requests.get(
+        'https://www.strava.com/api/v3/segments/starred',
+        headers={'Authorization': f'Bearer {token}'},
+        params={'following': False}
+    )
+    return response.json()
+
 if not os.path.exists(TOKENS_FILE):
     save_tokens(
         os.getenv("STRAVA_ACCESS_TOKEN"),
@@ -83,53 +99,49 @@ if not os.path.exists(TOKENS_FILE):
     )
     print("tokens.json created from .env")
 
+
 token = valid_token()
+
+starred_fragments = get_starred_segments(token)
+starred_ids = {s['id'] for s in starred_fragments}
 
 activities = get_activities(token)
 
-print("\nSyncing activities to Supabase...")
-print("___________________________________\n")
+print("\nACTIVITIES")
+print("___________________________________________")
 
-new_count = 0
-skip_count = 0
-
+/*
 for activity in activities:
-    if activity['type'] == "Ride" and not activity['trainer']:
-        details = get_activity_details(token, activity['id'])   
+    if (activity['type'] == "Ride" and not activity['trainer']):    
+        details = get_activity_details(token, activity['id'])
+        print(f"\nName: {details['name']}")
+        print(f"Distance: {round(details['distance'] / 1000, 2)} km")
 
-        if exists("activities", "id", activity['id']):
-            skip_count += 1
-            print(f"Skipped: {details['name']} ({details['start_date_local']})")
-            continue    
+        seconds = details['elapsed_time']
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
 
-        if 'errors' in details or 'message' in details:
-            print(f"Error fetching activity {activity['id']}: {details}")
-            continue
-        data = {
-            "id": details['id'],
-            "name": details['name'],
-            "type": details['type'],
-            "distance": details['distance'],
-            "elapsed_time": details['elapsed_time'],
-            "elevation_gain": details.get('total_elevation_gain'),
-            "average_speed": details.get('average_speed'),
-            "max_speed": details.get('max_speed'),
-            "average_watts": details.get('average_watts'),
-            "average_heartrate": details.get('average_heartrate'),
-            "start_date": details['start_date'],
-            "start_date_local": details['start_date_local'],
-            "trainer": details['trainer'],
-            "city": details.get('location_city'),
-            "country": details.get('location_country')
-        }
-
-        status = insert("activities", data)
-
-        if status == 201:
-            print(f"Saved: {details['name']} ({details['start_date_local']})")
-            new_count += 1
+        if hours > 0:
+            print(f"Duration: {hours}h {minutes}m")
         else:
-            print(f"Failed to save: {details['name']} (status {status})")
+            print(f"Duration: {minutes}m")
 
-        time.sleep(0.5)
-print(f"\nSynchronization complete. {new_count} new activities saved, {skip_count} skipped.")
+        print(f"Date: {details['start_date_local']}")
+
+        segments = details.get('segment_efforts', [])
+        if segments:
+            print("Top segments:")
+
+            for segment in segments:
+                segment_id = segment['segment']['id']
+                speed = segment['distance']/segment['elapsed_time']
+
+                if (speed*3.6 >= 38):
+                    if segment_id in starred_ids:
+                        print(f"  {segment['name']} (already starred)")
+                    else:
+                        star_segment(token, segment['segment']['id'])
+                        starred_ids.add(segment_id)
+                        print(f"  {segment['name']}(starred)")
+        print("___________________________________________")
+*/

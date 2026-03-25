@@ -20,18 +20,18 @@ def insert(table, data):
 		headers=HEADERS,
 		json=data
 	)
-	return response.json()
+	return response.status_code
 
 def select(table):
 	response = requests.get(
-		f"{SUPABASE_URL}/rest/v1/{table}
-		headeres=HEADERS
+		f"{SUPABASE_URL}/rest/v1/{table}",
+		headers=HEADERS
 	)
 	return response.json()
 
 def exists(table, column, value):
-	response = request.get(
-		f"{SUPABASE_URL}/rest/v1/{table},
+	response = requests.get(
+		f"{SUPABASE_URL}/rest/v1/{table}",
 		headers=HEADERS,
 		params={column: f"eq.{value}"}
 	)
