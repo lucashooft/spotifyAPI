@@ -13,13 +13,14 @@ auth_url = (
     f"?client_id={CLIENT_ID}"
     f"&redirect_uri=http://localhost"
     f"&response_type=code"
-    f"&scope=activity:read_all,read_all"
+    f"&scope=activity:read_all,read_all,profile:write"
 )
 
 print()
 print("Open this URL in your browser:")
 print(auth_url)
-print()CODE = input("Paste the code from the redirect URL: ").strip()
+print()
+CODE = input("Paste the code from the redirect URL: ").strip()
 
 response = requests.post(
     "https://www.strava.com/oauth/token",

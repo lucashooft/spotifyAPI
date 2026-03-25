@@ -44,32 +44,49 @@ def valid_token():
     print("Token refreshed and saved")
     return data["access_token"]
 
-def get_activities(token, pagina=1, per_pagina=30):
-    response = requests.get(
-        "https://www.strava.com/api/v3/athlete/activities",
-        headers={"Authorization": f"Bearer {token}"},
-        params={"per_page": per_pagina, "page": pagina}
-    )
-    return response.json()
+def get_activities(token, per_page=30):
+    all_activities = []
+    page = 1
+    while True:
+        response = requests.get(
+            "https://www.strava.com/api/v3/athlete/activities",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"per_page": per_page, "page": page}
+        )
+        data = response.json()
 
-def get_activity_details(token, activiteit_id):
+        if not isinstance(data, list) or not data:
+            break
+
+        all_activities.extend(data)
+        print(f"Page {page} fetched ({len(data)} activities)")
+        page += 1    
+    print(f"Total activities fetched: {len(all_activities)}")
+    return all_activities
+
+def get_activity_details(token, activity_id):
     response = requests.get(
-        f"https://www.strava.com/api/v3/activities/{activiteit_id}",
+        f"https://www.strava.com/api/v3/activities/{activity_id}",
         headers={"Authorization": f"Bearer {token}"},
         params={"include_all_efforts": True}
     )
     return response.json()
 
-def get_segment_position(token, segment_id):
-    time.sleep(0.5) 
-    response = requests.get(
-        f"https://www.strava.com/api/v3/segments/{segment_id}/leaderboard",
+def star_segment(token, segment_id):
+    response = requests.put(
+        f"https://www.strava.com/api/v3/segments/{segment_id}/starred",
         headers={"Authorization": f"Bearer {token}"},
-        params={"following": False}
+        json={"starred": True}
     )
-    data = response.json()
-    print(data)
-    return data.get("athlete_entry", None)
+    return response.json()
+
+def get_starred_segments(token):
+    response = requests.get(
+        'https://www.strava.com/api/v3/segments/starred',
+        headers={'Authorization': f'Bearer {token}'},
+        params={'following': False}
+    )
+    return response.json()
 
 if not os.path.exists(TOKENS_FILE):
     save_tokens(
@@ -82,6 +99,9 @@ if not os.path.exists(TOKENS_FILE):
 
 token = valid_token()
 
+starred_fragments = get_starred_segments(token)
+starred_ids = {s['id'] for s in starred_fragments}
+
 activities = get_activities(token)
 
 print("\nACTIVITIES")
@@ -91,7 +111,6 @@ print("___________________________________________")
 for activity in activities:
     if (activity['type'] == "Ride" and not activity['trainer']):    
         details = get_activity_details(token, activity['id'])
-        
         print(f"\nName: {details['name']}")
         print(f"Distance: {round(details['distance'] / 1000, 2)} km")
 
@@ -108,9 +127,18 @@ for activity in activities:
 
         segments = details.get('segment_efforts', [])
         if segments:
-            print("Segmenten:")
-            for segment in segments:
-                print(f"  {segment['name']}")
-                print(f"  {get_segment_position(token, segment['segment']['id'])}")
+            print("Top segments:")
 
-        print("-------------------------------------------")
+            for segment in segments:
+                segment_id = segment['segment']['id']
+                speed = segment['distance']/segment['elapsed_time']
+
+                if (speed*3.6 >= 38):
+                    if segment_id in starred_ids:
+                        print(f"  {segment['name']} (already starred)")
+                    else:
+                        star_segment(token, segment['segment']['id'])
+                        starred_ids.add(segment_id)
+                        print(f"  {segment['name']}(starred)")
+        print("___________________________________________")
+
